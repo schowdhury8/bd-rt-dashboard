@@ -10,7 +10,7 @@ L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_toke
 }).addTo(mymap);
 
 
-var googleSheetsUrl = "../static/rt_bd_june_7_web.csv";
+var googleSheetsUrl = "static/rt_bd_june_7_web.csv";
 
 Papa.parse(googleSheetsUrl, {
 	download: true,
