@@ -1,3 +1,14 @@
+function updateFromDropdown(districtData, selection) {
+    var district = districtData.filter(result => (result.district === selection))[0];
+    var districtName = district.district;
+    var rtYesterday = district.rt_yesterday;
+    document.querySelector('#districts').value = districtName;
+    document.querySelector('#death_rt_value').innerText = rtYesterday;
+    document.querySelector('#plot_death_rt_value').innerText = rtYesterday;
+    document.querySelector('#death_rt').value = rtYesterday;
+    document.querySelector('#death_rt').dispatchEvent(new Event('change'));
+}
+
 var googleSheetsUrl = "https://notmahi.github.io/bd-rt-dashboard/static/rt_bd_june_7_web.csv";
 
 Papa.parse(googleSheetsUrl, {
@@ -14,21 +25,9 @@ Papa.parse(googleSheetsUrl, {
             districtElem.appendChild(option);
         });
 
-
-        function updateFromDropdown(selection) {
-            var district = districtData.filter(result => (result.district === selection))[0];
-            var districtName = district.district;
-            var rtYesterday = district.rt_yesterday;
-            document.querySelector('#districts').value = districtName;
-            document.querySelector('#death_rt_value').innerText = rtYesterday;
-            document.querySelector('#plot_death_rt_value').innerText = rtYesterday;
-            document.querySelector('#death_rt').value = rtYesterday;
-            document.querySelector('#death_rt').dispatchEvent(new Event('change'));
-        }
-
-        document.querySelector('#districts').onchange = (e) => updateFromDropdown(e.target.value);
+        document.querySelector('#districts').onchange = (e) => updateFromDropdown(results.data, e.target.value);
         districtElem.value = 'Dhaka';
-        updateFromDropdown('Dhaka');
+        updateFromDropdown(districtData, 'Dhaka');
     }
 });
 
@@ -38,19 +37,6 @@ Papa.parse(googleSheetsUrl, {
  * @param  {Number}  x     x
  * @return {Array}   dydx  The rate at which y changes, is a function of x and of y
  */
-var slope = 2;
-// Replace this with the SEIR equations
-var derives = function(x, y) {
-    // you need to return the integration
-    var dydx = []
-
-    dydx[0] = y[0] + y[1]
-    dydx[1] = slope * y[1] + y[2]
-    dydx[2] = 3 * y[2]
-
-    return dydx
-}
-
 var eqn_given_rt = (slope) => function (x, y) {
     // you need to return the integration
     var dydx = []
@@ -62,26 +48,32 @@ var eqn_given_rt = (slope) => function (x, y) {
     return dydx
 }
 
-function makeDeathPlot (rt) {
+function solveDiffEq(rt) {
     var xaxis = [];
     var vals1 = [];
     var vals2 = [];
-    
+    var xStart = 0,
+        yStart = [1, 5, 10],
+        h = 0.1
 
+    var rk4 = new RungeKutta4(eqn_given_rt(rt), xStart, yStart, h)
+    for (i =0; i< 6; i++) {
+        xaxis[i] =i;
+        vals1[i]=rk4.step()[1]
+        vals2[i]=rk4.step()[2]
+    }
+    return [xaxis, vals1, vals2];
+}
+
+function makeDeathPlot (rt) {
     document.querySelector('#plot_death_rt_value').innerText = rt;
 
-    function solveDiffEq() {
-        var xStart = 0,
-            yStart = [1, 5, 10],
-            h = 0.1
-    
-        var rk4 = new RungeKutta4(eqn_given_rt(rt), xStart, yStart, h)
-        for (i =0; i< 6; i++) {
-            xaxis[i] =i;
-            vals1[i]=rk4.step()[1]
-            vals2[i]=rk4.step()[2]
-        }
-    }
+    results = solveDiffEq(rt);
+    var xaxis = results[0], vals1 = results[1], vals2 = results[2];
+
+    // TODO: Get the sickness data
+    var sickVals1 = vals1.map(x => x*x);
+    var sickVals2 = vals2.map(x => x*x);
 
     var chartOptions = {
         type: 'line',
@@ -118,15 +110,10 @@ function makeDeathPlot (rt) {
     var myChart = new Chart(document.getElementById('deathChart'), chartOptions);
     var mySickChart = new Chart(document.getElementById('sickChart'), chartOptions);
 
-
-    solveDiffEq();
 	myChart.data.datasets[0].data=vals1;
 	myChart.data.datasets[1].data=vals2;
     myChart.update();
     
-    // TODO: Get the sickness data
-    var sickVals1 = vals1.map(x => x*x);
-    var sickVals2 = vals2.map(x => x*x);
     mySickChart.data.datasets[0].data=sickVals1;
 	mySickChart.data.datasets[1].data=sickVals2;
     mySickChart.update();
