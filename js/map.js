@@ -83,6 +83,7 @@ Papa.parse(googleSheetsUrl, {
             this._div.innerHTML = '<h4>COVID-19 Rt Situation Update:</h4>' +  (flag ?
                 '<b>' + districtName + '</b><br /> R(t) yesterday ' + rtYesterday + '<br /> R(t) average ' + rtAvg
                 : 'Hover over a district');
+            
         };
 
         info.addTo(mymap);
@@ -107,11 +108,34 @@ Papa.parse(googleSheetsUrl, {
             geojson.resetStyle(e.target);
             info.update();
         }
+
+        function onClick(e) {
+            var layer = e.target;
+            var properties = layer.feature.properties;
+            // Here, update the side plots with new properties.
+            var districtData = getDistrictData(properties.key);
+            if (districtData.length > 0) {
+                var distritInfo = districtData[0];
+                var districtName = distritInfo.district;
+                var rtYesterday = distritInfo.rt_yesterday;
+            } else {
+                var districtName = properties.key;
+                var rtYesterday = 1.;
+            }
+
+            // TODO: Fix dummy data
+            document.querySelector('#districts').value = districtName;
+            document.querySelector('#death_rt_value').innerText = rtYesterday;
+            document.querySelector('#plot_death_rt_value').innerText = rtYesterday;
+            document.querySelector('#death_rt').value = rtYesterday;
+            document.querySelector('#death_rt').dispatchEvent(new Event('change'));
+        }
         
         function onEachFeature(feature, layer) {
             layer.on({
                 mouseover: highlightFeature,
-                mouseout: resetHighlight
+                mouseout: resetHighlight,
+                click: onClick
             });
         }
 

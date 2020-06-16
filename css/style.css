@@ -1,16 +1,58 @@
+html, body {
+    font: 14px/16px Arial, Helvetica, sans-serif;
+}
+
 #mapid {
-    height: 768px; 
+    height: 100vh;
+    grid-column: 1 / 2;
+    grid-row: 1;
 }
 
 .info {
     padding: 6px 8px;
     font: 14px/16px Arial, Helvetica, sans-serif;
     background: white;
-    background: rgba(255,255,255,0.8);
+    background: rgba(255, 255, 255, 0.8);
     box-shadow: 0 0 15px rgba(0,0,0,0.2);
     border-radius: 5px;
 }
 .info h4 {
     margin: 0 0 5px;
     color: #777;
+}
+
+.wrapper {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-gap: 10px;
+    grid-auto-rows: minmax(100%, auto);
+}
+
+.one {
+    grid-column: 1 / 3;
+    grid-row: 1;
+}
+
+.plot_row {
+    grid-column: 2 / 2;
+    grid-row: 1;
+    margin: 5vh 5vh;
+}
+
+#districts {
+    width: 100%;
+    height: 6vh;
+    font-size: x-large;
+    border-width: 0 0 1px 0;
+}
+
+.title {
+    font-size: 2em;
+    font-weight: bold;
+}
+
+.rt_display {
+    font-size: 1.5em;
+    margin-top: 2vh;
+    margin-bottom: 2vh;
 }
