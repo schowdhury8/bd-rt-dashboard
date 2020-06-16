@@ -13,6 +13,22 @@ Papa.parse(googleSheetsUrl, {
             option.innerText = district.district;
             districtElem.appendChild(option);
         });
+
+
+        function updateFromDropdown(selection) {
+            var district = districtData.filter(result => (result.district === selection))[0];
+            var districtName = district.district;
+            var rtYesterday = district.rt_yesterday;
+            document.querySelector('#districts').value = districtName;
+            document.querySelector('#death_rt_value').innerText = rtYesterday;
+            document.querySelector('#plot_death_rt_value').innerText = rtYesterday;
+            document.querySelector('#death_rt').value = rtYesterday;
+            document.querySelector('#death_rt').dispatchEvent(new Event('change'));
+        }
+
+        document.querySelector('#districts').onchange = (e) => updateFromDropdown(e.target.value);
+        districtElem.value = 'Dhaka';
+        updateFromDropdown('Dhaka');
     }
 });
 
@@ -67,10 +83,7 @@ function makeDeathPlot (rt) {
         }
     }
 
-    var ctx = document.getElementById('deathChart');
-    var x = 9;
-
-    var myChart = new Chart(ctx, {
+    var chartOptions = {
         type: 'line',
         data: {
             //labels: ['1', '2','3','4','5','6'],
@@ -100,42 +113,10 @@ function makeDeathPlot (rt) {
                 }]*/
             }
         }
-    });
+    };
 
-
-    var sickCtx = document.getElementById('sickChart');
-
-    var mySickChart = new Chart(sickCtx, {
-        type: 'line',
-        data: {
-            //labels: ['1', '2','3','4','5','6'],
-            labels: xaxis,
-            datasets: [{
-                label: 'Solving an equation',
-                data: vals1,
-                borderWidth: 3,
-                fill:false
-            }, {
-                label: 'Another thing',
-                data: vals2,
-                borderWidth: 3,
-                borderColor: "#3e95cd",
-                fill:false
-            }]
-        },
-        options: {
-            scales: {
-                yAxes: [{
-                    ticks: {
-                        beginAtZero: true
-                    }
-                }]
-                /*xAxes: [{
-                    type: 'linear'
-                }]*/
-            }
-        }
-    });
+    var myChart = new Chart(document.getElementById('deathChart'), chartOptions);
+    var mySickChart = new Chart(document.getElementById('sickChart'), chartOptions);
 
 
     solveDiffEq();
