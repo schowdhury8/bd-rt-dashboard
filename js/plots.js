@@ -177,16 +177,25 @@ function makeDeathPlot (rt) {
         }
     };
 
-    var myChart = new Chart(document.getElementById('deathChart'), chartOptions);
-    var mySickChart = new Chart(document.getElementById('sickChart'), chartOptions);
 
-	myChart.data.datasets[0].data=vals1;
-	myChart.data.datasets[1].data=vals2;
-    myChart.update();
+    if(window.myDeathChart && window.myDeathChart !== null){
+        window.myDeathChart.destroy();
+    }
+
+    if(window.mySickChart && window.mySickChart !== null){
+        window.mySickChart.destroy();
+    }
+
+    window.myDeathChart = new Chart(document.getElementById('deathChart'), chartOptions);
+    window.mySickChart = new Chart(document.getElementById('sickChart'), chartOptions);
+
+	window.myDeathChart.data.datasets[0].data=vals1;
+	window.myDeathChart.data.datasets[1].data=vals2;
+    window.myDeathChart.update();
     
-    mySickChart.data.datasets[0].data=sickVals1;
-	mySickChart.data.datasets[1].data=sickVals2;
-    mySickChart.update();
+    window.mySickChart.data.datasets[0].data=sickVals1;
+	window.mySickChart.data.datasets[1].data=sickVals2;
+    window.mySickChart.update();
 }
 
 function resetRt () {
