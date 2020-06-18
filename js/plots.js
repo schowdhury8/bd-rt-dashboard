@@ -1,35 +1,105 @@
-function updateFromDropdown(districtData, selection) {
-    var district = districtData.filter(result => (result.district === selection))[0];
-    var districtName = district.district;
-    var rtYesterday = district.rt_yesterday;
+function updateFromDropdown(selection) {
+    var district = window.districtData[selection];
+    var districtName = selection;
+    var rtYesterday = lastRt(district);
     document.querySelector('#districts').value = districtName;
     document.querySelector('#death_rt_value').innerText = rtYesterday;
     document.querySelector('#plot_death_rt_value').innerText = rtYesterday;
     document.querySelector('#death_rt').value = rtYesterday;
     document.querySelector('#death_rt').dispatchEvent(new Event('change'));
+    makeRtChart(selection);
+}
+document.querySelector('#districts').onchange = (e) => updateFromDropdown(e.target.value);
+
+function makeRtChart(districtName) {
+    var districtData = window.districtData[districtName];
+    var ctx = document.querySelector('#rtChart');
+    if(window.myChart && window.myChart !== null){
+        window.myChart.destroy();
+    }
+    window.myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            //labels: ['1', '2','3','4','5','6'],
+            // labels: districtData.date,
+            datasets: [{
+                label: '90% High',
+                data: dictToPoints(districtData.High_90, districtData.date, districtData.enough_data),
+                borderWidth: 0,
+                fill:false,
+            }, 
+            {
+                label: '90% High (confident)',
+                data: dictToPoints(districtData.High_90, districtData.date, districtData.enough_data, false),
+                borderWidth: 0,
+                fill:false,
+                radius: 0,
+                hitRadius: 0, 
+                hoverRadius: 0
+            }, 
+            {
+                label: 'Most likely R',
+                data: dictToPoints(districtData.ML, districtData.date, districtData.enough_data),
+                borderWidth: 3,
+                borderColor: "#3e95cd",
+                fill: false,
+            },
+            {
+                label: '90% Low',
+                data: dictToPoints(districtData.Low_90, districtData.date, districtData.enough_data),                            
+                borderWidth: 3,
+                fill: '-3',
+            },
+            {
+                label: '90% Low (confident)',
+                data: dictToPoints(districtData.Low_90, districtData.date, districtData.enough_data, false),                            
+                borderWidth: 3,
+                backgroundColor: 'rgba(255, 173, 173, 0.4)',
+                fill: '-3',
+                radius: 0,
+                hitRadius: 0, 
+                hoverRadius: 0
+            }]
+        },
+        options: {
+            maintainAspectRatio:false,
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        // max: 10
+                    }
+                }],
+                xAxes: [{
+                    type: 'time',
+                    distribution: 'linear',
+                    time: {
+                        unit: 'day'
+                    },
+                    gridLines: {
+                        color: "rgba(0, 0, 0, 0)",
+                    }
+                }]
+                /*xAxes: [{
+                    type: 'linear'
+                }]*/
+            }, 
+            elements: { 
+                point: { 
+                    radius: 0.5,
+                    hitRadius: 3, 
+                    hoverRadius: 4
+                } 
+            },
+            legend: {
+                display: false
+            }
+        }
+    });
+    myChart.update();
 }
 
 var googleSheetsUrl = "https://notmahi.github.io/bd-rt-dashboard/static/rt_bd_june_7_web.csv";
-
-Papa.parse(googleSheetsUrl, {
-	download: true,
-    header: true,
-	dynamicTyping: true,
-	complete: function(results) {
-        var districtData = results.data;
-        var districtElem = document.querySelector('#districts');
-        districtData.forEach((district) => {
-            var option = document.createElement('option');
-            option.value = district.district;
-            option.innerText = district.district;
-            districtElem.appendChild(option);
-        });
-
-        document.querySelector('#districts').onchange = (e) => updateFromDropdown(results.data, e.target.value);
-        districtElem.value = 'Dhaka';
-        updateFromDropdown(districtData, 'Dhaka');
-    }
-});
 
 /**
  * this is the target differential equations

@@ -12,139 +12,148 @@ L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_toke
 
 var googleSheetsUrl = "https://notmahi.github.io/bd-rt-dashboard/static/rt_bd_june_7_web.csv";
 
+const Rt_url = "https://notmahi.github.io/bd-rt-dashboard/static/rt_bangladesh.json";
+function handle_rt_data(response) {
+    const rtData = response;
+    window.districtData = rtData;
+    var districtElem = document.querySelector('#districts');
+
+    for (district in rtData) {
+        var option = document.createElement('option');
+        option.value = district;
+        option.innerText = district;
+        districtElem.appendChild(option);
+    }
+    districtElem.value = 'Dhaka';
+    updateFromDropdown('Dhaka');
+
+    updateMap();
+}
+
+fetchJSON(Rt_url, handle_rt_data);
+
 Papa.parse(googleSheetsUrl, {
 	download: true,
     header: true,
 	dynamicTyping: true,
-	complete: function(results) {
-        var districtData = results.data;
-
-		function getColor(rt_now, rt_7days) {
-            return ((rt_now >= 1) & (rt_7days >= 1)) ? '#d7191c' :
-                   ((rt_now < 1) & (rt_7days >= 1)) ? '#fdae61' :
-                   ((rt_now >= 1) & (rt_7days < 1)) ? '#ffffbf' :
-                                                     '#1a9641';
-        }
-        
-        function getDistrictData(key) {
-            var district = districtData.filter(result => (result.district === key));
-            return district;
-        }
-        
-        function style(feature) {
-            var districtData = getDistrictData(feature.properties.key);
-            if (districtData.length === 0) {
-                var color = '#a6d96a';
-            } else {
-                var color = getColor(districtData[0].rt_yesterday, districtData[0].rt_avg);
-            }
-            // var color = getColor(feature.properties.key)
-            return {
-                fillColor: color,
-                fillOpacity: 0.9,
-                weight: 2,
-                opacity: 1,
-                color: 'white',
-                dashArray: '3'
-            };
-        }
-
-        var info = L.control();
-
-        info.onAdd = function (map) {
-            this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
-            this.update();
-            return this._div;
-        };
-
-        // method that we will use to update the control based on feature properties passed
-        info.update = function (props) {
-            var flag = false;
-            var districtName = '';
-            var rtYesterday = 1.;
-            var rtAvg = 1.;
-            if(props) {
-                if (props.key) {
-                    var districtData = getDistrictData(props.key);
-                    if (districtData.length > 0) {
-                        var distritInfo = districtData[0];
-                        var districtName = distritInfo.district;
-                        var rtYesterday = distritInfo.rt_yesterday;
-                        var rtAvg = distritInfo.rt_avg;
-                    } else {
-                        var districtName = props.key;
-                        var rtYesterday = '(not enough cases)';
-                        var rtAvg = '(not enough cases)';
-                    }
-                    flag = true;
-                }
-            }
-            
-            this._div.innerHTML = '<h4>COVID-19 Rt Situation Update:</h4>' +  (flag ?
-                '<b>' + districtName + '</b><br /> R(t) yesterday ' + rtYesterday + '<br /> R(t) average ' + rtAvg
-                : 'Hover over a district');
-            
-        };
-
-        info.addTo(mymap);
-
-        function highlightFeature(e) {
-            var layer = e.target;
-        
-            layer.setStyle({
-                weight: 5,
-                color: '#666',
-                dashArray: '',
-                fillOpacity: 0.9
-            });
-        
-            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-                layer.bringToFront();
-            }
-            info.update(layer.feature.properties);
-        }
-        
-        function resetHighlight(e) {
-            geojson.resetStyle(e.target);
-            info.update();
-        }
-
-        function onClick(e) {
-            var layer = e.target;
-            var properties = layer.feature.properties;
-            // Here, update the side plots with new properties.
-            var districtData = getDistrictData(properties.key);
-            if (districtData.length > 0) {
-                var distritInfo = districtData[0];
-                var districtName = distritInfo.district;
-                var rtYesterday = distritInfo.rt_yesterday;
-            } else {
-                var districtName = properties.key;
-                var rtYesterday = 1.;
-            }
-
-            // TODO: Fix dummy data
-            document.querySelector('#districts').value = districtName;
-            document.querySelector('#death_rt_value').innerText = rtYesterday;
-            document.querySelector('#plot_death_rt_value').innerText = rtYesterday;
-            document.querySelector('#death_rt').value = rtYesterday;
-            document.querySelector('#death_rt').dispatchEvent(new Event('change'));
-        }
-        
-        function onEachFeature(feature, layer) {
-            layer.on({
-                mouseover: highlightFeature,
-                mouseout: resetHighlight,
-                click: onClick
-            });
-        }
-
-        geojson = L.geoJson(geoData, 
-            {
-                style: style,
-                onEachFeature: onEachFeature,
-            }
-        ).addTo(mymap);
-	}
 });
+
+function updateMap() {
+
+    function getColor(rt_now, rt_7days) {
+        return ((rt_now >= 1) & (rt_7days >= 1)) ? '#d7191c' :
+               ((rt_now < 1) & (rt_7days >= 1)) ? '#fdae61' :
+               ((rt_now >= 1) & (rt_7days < 1)) ? '#F2F216' :
+                                                 '#1a9641';
+    }
+
+    function getDistrictData(key) {
+        var district = window.districtData[key];
+        return district;
+    }
+    
+    function style(feature) {
+        var districtData = getDistrictData(feature.properties.name);
+        if (lastElem(districtData.enough_data) === false) {
+            var color = '#93936B';
+        } else {
+            var color = getColor(lastRt(districtData), last7DaysRt(districtData));
+        }
+        // var color = getColor(feature.properties.key)
+        return {
+            fillColor: color,
+            fillOpacity: 0.9,
+            weight: 2,
+            opacity: 1,
+            color: 'white',
+            dashArray: '3'
+        };
+    }
+
+    var info = L.control();
+
+    info.onAdd = function (map) {
+        this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+        this.update();
+        return this._div;
+    };
+
+    // method that we will use to update the control based on feature properties passed
+    info.update = function (props) {
+        var flag = false;
+        var districtName = '';
+        var rtYesterday = 1.;
+        var rtAvg = 1.;
+        if(props) {
+            if (props.key) {
+                var districtName = props.name;
+                var district = getDistrictData(districtName);
+                var rtYesterday = lastRt(district);
+                var rtAvg = last7DaysRt(district);
+                flag = true;
+            }
+        }
+        
+        this._div.innerHTML = '<h4>COVID-19 Rt Situation Update:</h4>' +  (flag ?
+            '<b>' + districtName + '</b><br /> R(t) yesterday ' + rtYesterday + '<br /> R(t) average ' + rtAvg
+            : 'Hover over a district');
+        
+    };
+
+    info.addTo(mymap);
+
+    function highlightFeature(e) {
+        var layer = e.target;
+    
+        layer.setStyle({
+            weight: 5,
+            color: '#666',
+            dashArray: '',
+            fillOpacity: 0.9
+        });
+    
+        if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+            layer.bringToFront();
+        }
+        info.update(layer.feature.properties);
+    }
+    
+    function resetHighlight(e) {
+        geojson.resetStyle(e.target);
+        info.update();
+    }
+
+    function onClick(e) {
+        var layer = e.target;
+        var properties = layer.feature.properties;
+        // Here, update the side plots with new properties.
+        var districtName = properties.name;
+        updateFromDropdown(districtName);
+        var district = getDistrictData(districtName);
+        var rtYesterday = lastRt(district);
+        flag = true;
+
+        // TODO: Fix dummy data
+        document.querySelector('#districts').value = districtName;
+        document.querySelector('#death_rt_value').innerText = rtYesterday;
+        document.querySelector('#plot_death_rt_value').innerText = rtYesterday;
+        document.querySelector('#death_rt').value = rtYesterday;
+        document.querySelector('#death_rt').dispatchEvent(new Event('change'));
+    }
+    
+    function onEachFeature(feature, layer) {
+        layer.on({
+            mouseover: highlightFeature,
+            mouseout: resetHighlight,
+            click: onClick
+        });
+    }
+
+    geojson = L.geoJson(geoData, 
+        {
+            style: style,
+            onEachFeature: onEachFeature,
+        }
+    ).addTo(mymap);
+}
 
