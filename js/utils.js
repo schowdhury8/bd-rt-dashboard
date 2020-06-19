@@ -1,3 +1,5 @@
+const dayConstant = 24 * 60 * 60 * 1000;
+
 function load(url, callback) {
     var xhr = new XMLHttpRequest();
 
@@ -88,11 +90,23 @@ function dictToList(dictionary) {
 
 function makeDateTimeseries(initTimeStamp, numDays=60) {
     var dateList = [];
-    var dayConstant = 24 * 60 * 60 * 1000;
     for(var i = 0; i < numDays; i++) {
         dateList.push(new Date(initTimeStamp + i * dayConstant));
     }
     return dateList;
+}
+
+function findFirstValidDay(dateSeries, caseCountSeries, conditionFunc) {
+    var firstDate = dateSeries[0];
+    console.log(new Date(firstDate));
+    var size = dictLength(caseCountSeries);
+    for(var i = 5; i < size; i++) {
+        if (conditionFunc(caseCountSeries[i])) {
+            firstDate = Math.max(firstDate, dateSeries[i] - 5 * dayConstant);
+            break;
+        }
+    }
+    return firstDate;
 }
 
 window.districtData = null;

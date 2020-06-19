@@ -2,7 +2,8 @@ var mymap = L.map('mapid').setView([23.7741701,90.2620907], 7);
 
 L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
     attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-    maxZoom: 18,
+    maxZoom: 7,
+    minZoom: 7,
     id: 'mapbox/light-v10',
     tileSize: 512,
     zoomOffset: -1,
@@ -103,9 +104,9 @@ function updateMap() {
             }
         }
         
-        this._div.innerHTML = '<h4>COVID-19 Rt Situation Update:</h4>' +  (flag ?
-            '<b>' + districtName + '</b><br /> R(t) yesterday ' + rtYesterday + '<br /> R(t) average ' + rtAvg
-            : 'Hover over a district');
+        this._div.innerHTML = '<h3>COVID-19 Rt Situation Update:</h3>' +  (flag ?
+            '<h2>' + districtName + '</h2><h3>R(t) yesterday ' + rtYesterday + '</h3><h3>R(t) average ' + rtAvg +'</h3>'
+            : '<h3>Hover over a district</h3>');
         
     };
 
