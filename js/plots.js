@@ -6,10 +6,9 @@ function updateFromDropdown(selection) {
     document.querySelector('#death_rt_value').innerText = rtYesterday;
     document.querySelector('#plot_death_rt_value').innerText = rtYesterday;
     document.querySelector('#death_rt').value = rtYesterday;
-    document.querySelector('#death_rt').dispatchEvent(new Event('change'));
     makeRtChart(selection);
+    document.querySelector('#death_rt').dispatchEvent(new Event('change'));
 }
-document.querySelector('#districts').onchange = (e) => updateFromDropdown(e.target.value);
 
 function makeRtChart(districtName) {
     var districtData = window.districtData[districtName];
@@ -99,103 +98,166 @@ function makeRtChart(districtName) {
     myChart.update();
 }
 
+
 var googleSheetsUrl = "https://notmahi.github.io/bd-rt-dashboard/static/rt_bd_june_7_web.csv";
 
-/**
- * this is the target differential equations
- * @param  {Array}   y     It is an unknown function of x which we would like to approximate
- * @param  {Number}  x     x
- * @return {Array}   dydx  The rate at which y changes, is a function of x and of y
- */
-var eqn_given_rt = (slope) => function (x, y) {
-    // you need to return the integration
-    var dydx = []
-
-    dydx[0] = y[0] + y[1]
-    dydx[1] = slope * y[1] + y[2]
-    dydx[2] = 3 * y[2]
-
-    return dydx
-}
-
-function solveDiffEq(rt) {
-    var xaxis = [];
-    var vals1 = [];
-    var vals2 = [];
-    var xStart = 0,
-        yStart = [1, 5, 10],
-        h = 0.1
-
-    var rk4 = new RungeKutta4(eqn_given_rt(rt), xStart, yStart, h)
-    for (i =0; i< 6; i++) {
-        xaxis[i] =i;
-        vals1[i]=rk4.step()[1]
-        vals2[i]=rk4.step()[2]
-    }
-    return [xaxis, vals1, vals2];
-}
 
 function makeDeathPlot (rt) {
     document.querySelector('#plot_death_rt_value').innerText = rt;
+    var districtName = document.querySelector('#districts').value;
+    var districtData = window.districtData[districtName];
 
-    results = solveDiffEq(rt);
-    var xaxis = results[0], vals1 = results[1], vals2 = results[2];
+    var caseHistory = window.caseHistory[districtName];
+    var counts = dictToList(caseHistory['count']);
+    var countsRaw = dictToList(caseHistory['raw']);
 
-    // TODO: Get the sickness data
-    var sickVals1 = vals1.map(x => x*x);
-    var sickVals2 = vals2.map(x => x*x);
+    var population = window.populations['Population'][districtName];
 
+    var rtToObserved = (x) => predictSEIR(counts, countsRaw, population, x);
+
+    // We plot all four, upper, lower bounds and current trajectory, and let
+    // them play with the possible cases.
+
+    var RtLow = lastElem(districtData['Low_90']);
+    var RtHigh = lastElem(districtData['High_90']);
+    var RtAvg = lastElem(districtData['ML']);
+
+    var Omax = rtToObserved(RtAvg), 
+        Olow = rtToObserved(RtLow),
+        Ohigh = rtToObserved(RtHigh);
+
+
+    console.log(Omax);
+
+    var OProjected = rtToObserved(rt);
+
+    var projectedDates = makeDateTimeseries(lastElem(districtData['date']));
+
+    // Now, it's time to put them in the plot.
+    var caseCtx = document.querySelector('#caseChart');
     var chartOptions = {
-        type: 'line',
+        type: 'line', //'scatter',
         data: {
-            //labels: ['1', '2','3','4','5','6'],
-            labels: xaxis,
             datasets: [{
-                label: 'Solving an equation',
-                data: vals1,
-                borderWidth: 3,
-                fill:false
-            }, {
-                label: 'Another thing',
-                data: vals2,
-                borderWidth: 3,
+                label: 'Observed cases (smoothed)',
+                data: dictToPoints(counts, districtData['date'], counts),
+                radius: 0.5,
+            },
+            {
+                label: 'Observed cases',
+                data: dictToPoints(countsRaw, districtData['date'], counts),
+                fill: false,
+                radius: 1,
+                showLines: false,
+                pointBackgroundColor: 'black',
+                pointRadius: 2,
+                borderColor: 'rgba(128, 128, 128, 0)',
+            },
+            {
+                label: 'Currently predicted, most likely trajectory',
+                data: dictToPoints(Omax, projectedDates, Omax),
+                showLine: true,
+                fill: false,
                 borderColor: "#3e95cd",
-                fill:false
+                radius: 0.5,
+            },
+            {
+                label: 'Predicted high',
+                data: dictToPoints(Ohigh, projectedDates, Ohigh),
+                showLine: true,
+                fill: false,
+                backgroundColor: 'rgba(62, 149, 205, 0.2)',
+                radius: 0,
+                hitRadius: 0, 
+                hoverRadius: 0
+            },
+            {
+                label: 'Predicted low',
+                data: dictToPoints(Olow, projectedDates, Olow),
+                showLine: true,
+                fill: '-1',
+                backgroundColor: 'rgba(62, 149, 205, 0.2)',
+                radius: 0,
+                hitRadius: 0, 
+                hoverRadius: 0
+            },
+            {
+                label: 'Projection for given R(t)',
+                data: dictToPoints(OProjected, projectedDates, OProjected),
+                showLine: true,
+                fill: false,
+                borderColor: "rgb(52, 0, 104)",
+                radius: 0.5,
             }]
         },
         options: {
+            maintainAspectRatio:false,
+            annotation: {
+                annotations: [
+                    {
+                        drawTime: "afterDatasetsDraw",
+                        type: "line",
+                        mode: "vertical",
+                        scaleID: "x-axis-0",
+                        value: new Date(lastElem(districtData.date)),
+                        borderWidth: 2,
+                        borderColor: "red",
+                        label: {
+                            content: "Last update: " + new Date(lastElem(districtData.date)).toString().substring(4, 10),
+                            enabled: true,
+                            position: "top"
+                        }
+                    }
+                ]
+            },
+            animation: {
+                duration: 0
+            },
             scales: {
                 yAxes: [{
                     ticks: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        suggestedMax: 2 * Math.max(...Omax.map(z => z.y)),//20000 // MAHI: this number should be fixed dynamically to make the plots line up.
+                        max: 2 * Math.max(...Omax.map(z => z.y)),
                     }
+                }], 
+                    
+                xAxes: [{
+                    type: 'time',
+                    distribution: 'linear',
+                    time: {
+                        unit: 'day'
+                    },
+                    // gridLines: {
+                    //     color: "rgba(0, 0, 0, 0)",
+                    // }
                 }]
-                /*xAxes: [{
-                    type: 'linear'
-                }]*/
+
+            },     
+            tooltips: {
+                mode: 'x',
+                position: 'nearest',
+                filter: function(tooltipItem, data) {
+                    return [0, 1, 2, 5].includes(tooltipItem.datasetIndex);
+                }
+            },
+            legend: {
+                display: true,
+                labels: {
+                    filter: function(legendItem, data) {
+                        return [0, 2, 5].includes(legendItem.datasetIndex);
+                    }
+                }
             }
         }
-    };
-
-
-    if(window.myDeathChart && window.myDeathChart !== null){
-        window.myDeathChart.destroy();
     }
 
-    if(window.mySickChart && window.mySickChart !== null){
-        window.mySickChart.destroy();
+    if(window.myCaseChart && window.myCaseChart !== null){
+        window.myCaseChart.destroy();
     }
 
-    window.myDeathChart = new Chart(document.getElementById('deathChart'), chartOptions);
-    window.mySickChart = new Chart(document.getElementById('sickChart'), chartOptions);
-
-	window.myDeathChart.data.datasets[0].data=vals1;
-	window.myDeathChart.data.datasets[1].data=vals2;
-    window.myDeathChart.update();
-    
-    window.mySickChart.data.datasets[0].data=sickVals1;
-	window.mySickChart.data.datasets[1].data=sickVals2;
-    window.mySickChart.update();
+    window.myCaseChart = new Chart(caseCtx, chartOptions);
+    window.myCaseChart.update();
 }
 
 function resetRt () {

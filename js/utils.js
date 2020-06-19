@@ -20,6 +20,9 @@ function fetchJSON(url, callback) {
 }
 
 function dictLength (dict) {
+    if(Array.isArray(dict)) {
+        return dict.length;
+    }
     return Object.keys(dict).length;
 }
 
@@ -71,8 +74,27 @@ function dictToPoints(data, timeLabels, enoughData, neededType) {
             y: selectionFunction(enoughData[i], data[i]),
         });
     }
-    console.log(points);
     return points;
 }
 
+function dictToList(dictionary) {
+    var length = dictLength(dictionary);
+    var list = [];
+    for(var i = 0; i < length; i++) {
+        list.push(dictionary[i]);
+    }
+    return list;
+}
+
+function makeDateTimeseries(initTimeStamp, numDays=60) {
+    var dateList = [];
+    var dayConstant = 24 * 60 * 60 * 1000;
+    for(var i = 0; i < numDays; i++) {
+        dateList.push(new Date(initTimeStamp + i * dayConstant));
+    }
+    return dateList;
+}
+
 window.districtData = null;
+window.populations = null;
+window.caseHistory = null;

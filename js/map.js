@@ -3,7 +3,7 @@ var mymap = L.map('mapid').setView([23.7741701,90.2620907], 7);
 L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
     attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
     maxZoom: 18,
-    id: 'mapbox/streets-v11',
+    id: 'mapbox/light-v10',
     tileSize: 512,
     zoomOffset: -1,
     accessToken: 'pk.eyJ1Ijoibm90bWFoaSIsImEiOiJja2JmamR3cG8wcDN5MnhudXozNWJhN21mIn0.VjlTbNZiPK0yUsmu3aNAsw'
@@ -13,6 +13,9 @@ L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_toke
 var googleSheetsUrl = "https://notmahi.github.io/bd-rt-dashboard/static/rt_bd_june_7_web.csv";
 
 const Rt_url = "https://notmahi.github.io/bd-rt-dashboard/static/rt_bangladesh.json";
+const popUrl = "static/bd_population.json";
+const caseHistoryUrl = "https://notmahi.github.io/bd-rt-dashboard/static/bd_case_history.json";
+
 function handle_rt_data(response) {
     const rtData = response;
     window.districtData = rtData;
@@ -28,15 +31,21 @@ function handle_rt_data(response) {
     updateFromDropdown('Dhaka');
 
     updateMap();
+
+    fetchJSON(popUrl, (response) => {
+        window.populations = response;
+        fetchJSON(caseHistoryUrl, (response) => {
+            window.caseHistory = response;
+            document.querySelector('#death_rt').onchange = (e) => makeDeathPlot(e.target.value);
+            document.querySelector('#districts').onchange = (e) => updateFromDropdown(e.target.value);
+
+            document.querySelector('#death_rt').dispatchEvent(new Event('change'));
+        });
+    });
 }
 
 fetchJSON(Rt_url, handle_rt_data);
 
-Papa.parse(googleSheetsUrl, {
-	download: true,
-    header: true,
-	dynamicTyping: true,
-});
 
 function updateMap() {
 
@@ -156,4 +165,5 @@ function updateMap() {
         }
     ).addTo(mymap);
 }
+
 
