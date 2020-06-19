@@ -28,8 +28,8 @@ function handle_rt_data(response) {
         option.innerText = district;
         districtElem.appendChild(option);
     }
-    districtElem.value = 'Dhaka';
-    updateFromDropdown('Dhaka');
+    districtElem.value = 'Dhaka City';
+    updateFromDropdown('Dhaka City');
 
     updateMap();
 
