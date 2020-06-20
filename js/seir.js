@@ -4,7 +4,7 @@ var sigma = 1/5;
 
 // this is the fraction of observed cases. Should not affect anything at small
 // casenumbers.
-var p = 0.1;
+var p = 0.3;
 
 var derives = function(x, y, Rt, N) {
     // this function calculates the derivatives
@@ -86,7 +86,7 @@ function solveDiffEq(newRt, S0, E0, I0, newN, numDays) {
 }
 
 
-function predictSEIR(caseNums, caseNumsRaw, population, Rt, numDays = 60) {
+function predictSEIR(caseNums, caseNumsRaw, population, Rt, numDays = 30) {
     var initConditions = calcInitialConditions(caseNums, caseNumsRaw);
     var E0 = initConditions[0],
         I0 = initConditions[1],
