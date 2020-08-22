@@ -384,7 +384,9 @@ def fix_names():
                 del rt_json[k]
                 
         rt_districts = list(rt_json.keys()) 
-        districts = [district_json['features'][i]['properties']['name'] for i in range(64)] + ['Dhaka (District)', 'Total']
+        districts = [district_json['features'][i]['properties']['name'] for i in range(64)] + ['Grand Total']
+        if os.environ.get('COVID_DEPLOY') is None:
+            districts += ['Dhaka (District)']
 
         districts.sort()
         rt_districts.sort()
