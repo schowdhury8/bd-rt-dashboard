@@ -6,21 +6,55 @@ import numpy as np
 import pandas as pd
 import pickle as pkl
 
-
 from matplotlib.dates import date2num, num2date
 from matplotlib import dates as mdates
 
 from scipy import stats as sps
 from scipy.interpolate import interp1d
 
+import requests
+import re
 
-DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR1FLQgrJjty6nOloHKJG_FuoByQ-6_Pt-i0rsBaZ63pxD3PCsMXBFhE0BVSEhAs5y3DtX1Np_D1YcG/pub?gid=2139694521&single=true&output=csv"
 
-def preprocess_data():
+def preprocess_data_a2i_url():
+    print('Downloading data...')
+    A2I_URL = 'http://cdr.a2i.gov.bd/positive_case_data/'
+    r = requests.get(A2I_URL)
+    urls = re.findall("[0-9\-]+.csv", r.text)
+    last_day_url = urls[-1]
+    data = pd.read_csv(A2I_URL + last_day_url)
+
+    pivoted = pd.pivot_table(data, 
+                            values='positive_cases', 
+                            index='dis_name', 
+                            columns='tdate', 
+                            fill_value=0, ).iloc[1:, ::-1].iloc[:, 1:]
+
+    replacement_dict = {
+        'Nawabganj':	'Chapainawabganj',
+        'Chittagong':	'Chattogram',
+        'Comilla':	'Cumilla',
+        'Dhaka':	'Dhaka City',
+        'Maulvibazar':	'Moulvibazar',
+        'Patuakhali':	'Potuakhali'
+    }
+
+    for key, val in replacement_dict.items():
+        pivoted.index = pivoted.index.str.replace(key, val)
+    return pivoted
+
+
+def preprocess_data_gdrive_url():
+    DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR1FLQgrJjty6nOloHKJG_FuoByQ-6_Pt-i0rsBaZ63pxD3PCsMXBFhE0BVSEhAs5y3DtX1Np_D1YcG/pub?gid=2139694521&single=true&output=csv"
     url = DATA_URL
     data = pd.read_csv(url, 
                         usecols=[0] + list(range(1, 331, 3)),
-        )
+    )
+    return data
+
+
+def preprocess_data():
+    data = preprocess_data_a2i_url()
 
     data = data.iloc[1:, :]
     data = data.T
@@ -28,7 +62,7 @@ def preprocess_data():
     data = data.iloc[:, :-3] # Dropping the columns after total
 
     # TODO: Always check on this line to make sure how many days to trim at the end
-    data = data.iloc[4:, :] # Dropping the rows until 6/22
+    data = data.iloc[7:, :] # Dropping the rows until 6/22
 
     data.index = pd.to_datetime(data.index)
     data = data.replace(to_replace='Not Given', value=np.nan).astype('float', errors='ignore').interpolate().clip(lower=0).round().fillna(0)
