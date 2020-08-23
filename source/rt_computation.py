@@ -1,4 +1,6 @@
 import json
+import logging
+import os
 import sys
 import traceback
 
@@ -16,8 +18,12 @@ import requests
 import re
 
 
+EXPORT_DIR = os.environ.get('COVID_DATA_DIRECTORY') or '.'
+if os.environ.get('COVID_DEPLOY'):
+    logging.basicConfig(filename='deploy_logs.log',level=logging.DEBUG)
+
 def preprocess_data_a2i_url():
-    print('Downloading data...')
+    logging.info('Downloading data...')
     A2I_URL = 'http://cdr.a2i.gov.bd/positive_case_data/'
     r = requests.get(A2I_URL)
     urls = re.findall("[0-9\-]+.csv", r.text)
@@ -41,25 +47,29 @@ def preprocess_data_a2i_url():
 
     for key, val in replacement_dict.items():
         pivoted.index = pivoted.index.str.replace(key, val)
-    return pivoted
 
+    pivoted = pivoted.sort_index()
+    pivoted.loc['Grand Total'] = pivoted.sum(axis=0)
+    return pivoted.T
 
 def preprocess_data_gdrive_url():
     DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR1FLQgrJjty6nOloHKJG_FuoByQ-6_Pt-i0rsBaZ63pxD3PCsMXBFhE0BVSEhAs5y3DtX1Np_D1YcG/pub?gid=2139694521&single=true&output=csv"
-    url = DATA_URL
-    data = pd.read_csv(url, 
+    data = pd.read_csv(DATA_URL, 
                         usecols=[0] + list(range(1, 331, 3)),
-    )
+    ).iloc[1:, :]
+
+    data = data.T
+
+    data = data.rename(columns={i : data.iloc[0, i-1] for i in range(len(data.columns))}).iloc[1:, :]
+    data = data.iloc[:, :-3] # Dropping the columns after total
     return data
 
 
 def preprocess_data():
-    data = preprocess_data_a2i_url()
-
-    data = data.iloc[1:, :]
-    data = data.T
-    data = data.rename(columns={i : data.iloc[0, i-1] for i in range(len(data.columns))}).iloc[1:, :]
-    data = data.iloc[:, :-3] # Dropping the columns after total
+    if os.environ.get('COVID_DEPLOY') == '1':
+        data = preprocess_data_a2i_url()
+    else:
+        data = preprocess_data_gdrive_url()
 
     # TODO: Always check on this line to make sure how many days to trim at the end
     data = data.iloc[7:, :] # Dropping the rows until 6/22
@@ -67,7 +77,9 @@ def preprocess_data():
     data.index = pd.to_datetime(data.index)
     data = data.replace(to_replace='Not Given', value=np.nan).astype('float', errors='ignore').interpolate().clip(lower=0).round().fillna(0)
 
-    data.to_csv('pipilika_export_clean.csv')
+    os.makedirs(EXPORT_DIR, exist_ok=True)
+
+    data.to_csv(os.path.join(EXPORT_DIR, 'data_export.csv'))
 
     json_dict = {}
 
@@ -80,7 +92,7 @@ def preprocess_data():
         }, index=district_data.index)
         json_dict[column] = json.loads(data_with_raw.reset_index().to_json())
 
-    with open('bd_case_history.json', 'w') as f:
+    with open(os.path.join(EXPORT_DIR, 'bd_case_history.json'), 'w') as f:
         json.dump(json_dict, f)
 
 
@@ -130,7 +142,7 @@ def calculate_rt():
         rt_range = np.linspace(0, rtmax, rtmax * 100 + 1)
 
         
-        print(f"estimating Rt for {region_name}...")
+        logging.debug(f"estimating Rt for {region_name}...")
 
         cases = data['positive']
         sigmas = np.linspace(1 / 20, 1, 20)
@@ -158,6 +170,7 @@ def calculate_rt():
     #     result_no_prior.index = result_no_prior.date
         
         if len(smoothed) == 0:
+            result_no_prior = compute_growth_rate_doubling_time(result_no_prior)
             return result_no_prior
 
 
@@ -194,7 +207,22 @@ def calculate_rt():
         result_computed = result_computed.dropna()
         
         result_no_prior.loc[result_computed.index] = result_computed
+        result_no_prior = compute_growth_rate_doubling_time(result_no_prior)
         return result_no_prior.reset_index()
+
+
+    def compute_growth_rate_doubling_time(results):
+        def doubling_time(x):
+            return 'doubling_time', (7. * np.log(2.)) / (x - 1.)
+        
+        def growth_rate(x):
+            return 'growth_rate', (np.exp((x - 1.) / 7.) - 1.)
+
+        for column in ['ML', 'Low_50', 'High_50', 'Low_90', 'High_50']:
+            for fn in [growth_rate, doubling_time]:
+                name, value = fn(results[column])
+                results[f'{name}_{column}'] = value
+        return results
 
 
     def highest_density_interval(pmf, p=0.9, debug=False):
@@ -204,7 +232,8 @@ def calculate_rt():
                 [highest_density_interval(pmf[col], p=p) for col in pmf], index=pmf.columns
             )
 
-        cumsum = np.cumsum(pmf.values)
+        to_sum = np.insert(pmf.values, 0, 0)
+        cumsum = np.cumsum(to_sum)
         # N x N matrix of total probability mass for each low, high
         total_p = cumsum - cumsum[:, None]
 
@@ -297,7 +326,7 @@ def calculate_rt():
 
         return posteriors, log_likelihood
     
-    df = pd.read_csv('pipilika_export_clean.csv',
+    df = pd.read_csv(os.path.join(EXPORT_DIR, 'data_export.csv'),
                 parse_dates=[0],
                 index_col=[0],).iloc[::-1, :]
                 
@@ -314,7 +343,7 @@ def calculate_rt():
             traceback.print_exc()
             assert False
 
-    with open('rt_dict.pkl', 'wb') as f:
+    with open(os.path.join(EXPORT_DIR, 'rt_dict.pkl'), 'wb') as f:
         pkl.dump(rt_df_dict, f)
 
     json_dicts = {}
@@ -323,7 +352,7 @@ def calculate_rt():
         df = rt_df_dict[d]
         json_dicts[d] = json.loads(df.to_json())
         
-    with open('rt_bangladesh.json', 'w') as f:
+    with open(os.path.join(EXPORT_DIR, 'rt_bangladesh.json'), 'w') as f:
         json.dump(json_dicts, f)
 
 
@@ -355,7 +384,9 @@ def fix_names():
                 del rt_json[k]
                 
         rt_districts = list(rt_json.keys()) 
-        districts = [district_json['features'][i]['properties']['name'] for i in range(64)] + ['Dhaka (District)', 'Total']
+        districts = [district_json['features'][i]['properties']['name'] for i in range(64)] + ['Grand Total']
+        if os.environ.get('COVID_DEPLOY') is None:
+            districts += ['Dhaka (District)']
 
         districts.sort()
         rt_districts.sort()
@@ -363,21 +394,21 @@ def fix_names():
         mapping = {}
         for i in range(len(districts)):
             if rt_districts[i] != districts[i]:
-                print(f'{rt_districts[i]}: {districts[i]},')
-            assert rt_districts[i] == districts[i]
+                logging.debug(f'{rt_districts[i]}: {districts[i]},')
+            assert rt_districts[i] == districts[i], (rt_districts[i], districts[i])
 
         with open(filename, 'w') as f:
             json.dump(rt_json, f)
 
         
     for filename in ['rt_bangladesh.json', 'bd_case_history.json']:
-        name_fixing(filename)
+        name_fixing(os.path.join(EXPORT_DIR, filename))
 
 
 if __name__ == '__main__':
-    print('Preprocessing data...')
+    logging.info('Preprocessing data...')
     preprocess_data()
-    print('Calculating R(t)...')
+    logging.info('Calculating R(t)...')
     calculate_rt()
-    print('Fixing the zone names...')
+    logging.info('Fixing the zone names...')
     fix_names()
