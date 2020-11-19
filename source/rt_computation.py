@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 import traceback
+import datetime
 
 import numpy as np
 import pandas as pd
@@ -17,8 +18,8 @@ from scipy.interpolate import interp1d
 import requests
 import re
 
-
-EXPORT_DIR = os.environ.get('COVID_DATA_DIRECTORY') or '.'
+date = datetime.datetime.now().strftime("%Y-%m-%d")
+EXPORT_DIR = os.environ.get('COVID_DATA_DIRECTORY') or '../data/'+date
 if os.environ.get('COVID_DEPLOY'):
     logging.basicConfig(filename='deploy_logs.log',level=logging.DEBUG)
 
@@ -375,7 +376,10 @@ def fix_names():
             'Moulvibazar': 'Maulvibazar',
             'Netrokona': 'Netrakona',
             'Potuakhali': 'Patuakhali',
-            'total': 'Total'
+            'total': 'Total',
+            'Brahmanbaria': 'Brahamanbaria',
+            'Chapai Nababganj': 'Chapainawabganj', 
+            'Kishoregonj': 'Kishoreganj'
         }
 
         for k in name_replacements.keys():
@@ -390,6 +394,8 @@ def fix_names():
 
         districts.sort()
         rt_districts.sort()
+
+        districts.remove('Bagerhat')
 
         mapping = {}
         for i in range(len(districts)):
