@@ -13,9 +13,9 @@ L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_toke
 
 var googleSheetsUrl = "https://notmahi.github.io/bd-rt-dashboard/static/rt_bd_june_7_web.csv";
 
-const Rt_url = "https://notmahi.github.io/bd-rt-dashboard/static/rt_bangladesh.json";
+const Rt_url = "https://raw.githubusercontent.com/schowdhury8/bd-rt-dashboard/master/static/rt_bangladesh.json";
 const popUrl = "https://notmahi.github.io/bd-rt-dashboard/static/bd_population.json";
-const caseHistoryUrl = "https://notmahi.github.io/bd-rt-dashboard/static/bd_case_history.json";
+const caseHistoryUrl = "https://raw.githubusercontent.com/schowdhury8/bd-rt-dashboard/master/data/2020-11-19/bd_case_history.json";
 
 function handle_rt_data(response) {
     const rtData = response;
@@ -97,6 +97,7 @@ function updateMap() {
         if(props) {
             if (props.key) {
                 var districtName = props.name;
+                console.log(districtName);
                 var district = getDistrictData(districtName);
                 var rtYesterday = lastRt(district);
                 var rtAvg = last7DaysRt(district);

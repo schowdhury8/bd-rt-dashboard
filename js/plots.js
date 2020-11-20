@@ -157,7 +157,7 @@ function makeDeathPlot (rt) {
         Ohigh = rtToObserved(RtHigh);
 
 
-    console.log(Omax);
+    // console.log(Omax);
 
     var OProjected = rtToObserved(rt);
 

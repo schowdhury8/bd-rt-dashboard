@@ -3,7 +3,7 @@ import logging
 import os
 import sys
 import traceback
-import datetime
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -18,10 +18,10 @@ from scipy.interpolate import interp1d
 import requests
 import re
 
-date = datetime.datetime.now().strftime("%Y-%m-%d")
+date = datetime.now().strftime("%Y-%m-%d")
 EXPORT_DIR = os.environ.get('COVID_DATA_DIRECTORY') or '../data/'+date
-if os.environ.get('COVID_DEPLOY'):
-    logging.basicConfig(filename='deploy_logs.log',level=logging.DEBUG)
+# if os.environ.get('COVID_DEPLOY'):
+logging.basicConfig(filename='deploy_logs.log',level=logging.DEBUG)
 
 def preprocess_data_a2i_url():
     logging.info('Downloading data...')
@@ -67,10 +67,12 @@ def preprocess_data_gdrive_url():
 
 
 def preprocess_data():
-    if os.environ.get('COVID_DEPLOY') == '1':
-        data = preprocess_data_a2i_url()
-    else:
-        data = preprocess_data_gdrive_url()
+    # if os.environ.get('COVID_DEPLOY') == '1':
+    #     data = preprocess_data_a2i_url()
+    # else:
+    #     data = preprocess_data_gdrive_url()
+
+    data = preprocess_data_a2i_url()
 
     # TODO: Always check on this line to make sure how many days to trim at the end
     data = data.iloc[7:, :] # Dropping the rows until 6/22
@@ -214,7 +216,9 @@ def calculate_rt():
 
     def compute_growth_rate_doubling_time(results):
         def doubling_time(x):
-            return 'doubling_time', (7. * np.log(2.)) / (x - 1.)
+            doubling_time = (7. * np.log(2.)) / (x - 1.)
+            doubling_time[doubling_time < 0] = None
+            return 'doubling_time', doubling_time
         
         def growth_rate(x):
             return 'growth_rate', (np.exp((x - 1.) / 7.) - 1.)
@@ -359,7 +363,7 @@ def calculate_rt():
 
 def fix_names():
     def name_fixing(filename):
-        with open('district.json', 'r') as f:
+        with open('district.json', 'r', encoding='utf-8') as f:
             district_json = json.load(f)
             
         with open(filename, 'r') as f:
@@ -376,7 +380,7 @@ def fix_names():
             'Moulvibazar': 'Maulvibazar',
             'Netrokona': 'Netrakona',
             'Potuakhali': 'Patuakhali',
-            'total': 'Total',
+            'total': 'Grand Total',
             'Brahmanbaria': 'Brahamanbaria',
             'Chapai Nababganj': 'Chapainawabganj', 
             'Kishoregonj': 'Kishoreganj'
