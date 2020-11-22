@@ -35,9 +35,14 @@ def preprocess_data_a2i_url():
                             values='positive_cases', 
                             index='dis_name', 
                             columns='tdate', 
-                            fill_value=0, ).iloc[1:, ::-1].iloc[:, 1:]
+                            fill_value=0, ).iloc[:, ::-1].iloc[:, 1:]
+                            #.iloc[1:, ::-1].iloc[:, 1:]
+    # pivoted.to_csv(os.path.join(EXPORT_DIR, 'out.csv'))
 
     replacement_dict = {
+        'Kishoregonj': 'Kishoreganj',
+        'Brahmanbaria': 'Brahamanbaria',
+        'Chapai Nababganj': 'Chapainawabganj',
         'Nawabganj':	'Chapainawabganj',
         'Chittagong':	'Chattogram',
         'Comilla':	'Cumilla',
@@ -380,10 +385,7 @@ def fix_names():
             'Moulvibazar': 'Maulvibazar',
             'Netrokona': 'Netrakona',
             'Potuakhali': 'Patuakhali',
-            'total': 'Grand Total',
-            'Brahmanbaria': 'Brahamanbaria',
-            'Chapai Nababganj': 'Chapainawabganj', 
-            'Kishoregonj': 'Kishoreganj'
+            'total': 'Total',
         }
 
         for k in name_replacements.keys():
@@ -398,8 +400,6 @@ def fix_names():
 
         districts.sort()
         rt_districts.sort()
-
-        districts.remove('Bagerhat')
 
         mapping = {}
         for i in range(len(districts)):

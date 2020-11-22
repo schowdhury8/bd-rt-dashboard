@@ -2,7 +2,7 @@ import json
 import numpy as np
 from datetime import datetime
 
-data = json.load(open('./data/2020-11-21/rt_bangladesh.json'))
+data = json.load(open('./data/2020-11-22/rt_bangladesh.json'))
 
 def format_data(district='Grand Total'): # returns data formatted in csv format by district
     district_dates = list(data['Grand Total']['date'].values())
